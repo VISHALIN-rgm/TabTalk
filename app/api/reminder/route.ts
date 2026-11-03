@@ -1,0 +1,10 @@
+import { NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { customers, entries, reminders, sandboxSessions, shops } from '@/db/schema'
+import { reminderRequestSchema } from '@/lib/schemas'
+import { and, eq, sql } from 'drizzle-orm'
+import { cookies } from 'next/headers'
+import { draftReminder } from '@/lib/meta'
+import { auth } from '@/lib/auth'
+export const maxDuration = 60
+export async function POST(request: Request) { try { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: 'Please sign in to draft reminders' }, { status: 401 }); const body = reminderRequestSchema.parse(await request.json()); const customer = (await db.select().from(customers).where(eq(customers.id, body.customerId)).limit(1))[0]; if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 }); const sessionId = (await cookies()).get('tabtalk_demo')?.value; const owned = sessionId ? await db.select({ id: shops.id }).from(sandboxSessions).innerJoin(shops, eq(shops.organizationId, sandboxSessions.organizationId)).where(and(eq(sandboxSessions.id, sessionId), eq(shops.id, customer.shopId), sql`${sandboxSessions.expiresAt} > now()`)).limit(1) : []; if (!owned[0]) return NextResponse.json({ error: 'This customer is not available in your workspace.' }, { status: 403 }); const shop = (await db.select().from(shops).where(eq(shops.id, customer.shopId)).limit(1))[0]; const rows = await db.select().from(entries).where(eq(entries.customerId, customer.id)); const balance = rows.reduce((sum, row) => sum + (row.type === 'credit' ? Number(row.amount) : -Number(row.amount)), 0); const message = await draftReminder(customer.name, new Intl.NumberFormat('en', { minimumFractionDigits: 2 }).format(balance), shop.currency, body.language); await db.insert(reminders).values({ customerId: customer.id, message, language: body.language }); return NextResponse.json({ message, language: body.language }) } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not draft reminder' }, { status: 400 }) } }

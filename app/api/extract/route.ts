@@ -1,0 +1,10 @@
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { eq, sql } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { extractFromImage, extractFromText } from '@/lib/meta'
+import { sandboxSessions } from '@/db/schema'
+import { extractRequestSchema } from '@/lib/schemas'
+import { auth } from '@/lib/auth'
+export const maxDuration = 60
+export async function POST(request: Request) { try { const session = await auth(); const trialId = (await cookies()).get('tabtalk_demo')?.value; const trialSession = trialId ? (await db.select({ id: sandboxSessions.id, extractionCount: sandboxSessions.extractionCount }).from(sandboxSessions).where(eq(sandboxSessions.id, trialId)).limit(1))[0] : null; if (!session?.user?.id && !trialSession) return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Please sign in to use Muse Spark.' } }, { status: 401 }); if (trialSession && trialSession.extractionCount >= 3) return NextResponse.json({ error: { code: 'TRIAL_LIMIT', message: 'Your trial includes three AI reads. Create an account to keep using Muse Spark.' } }, { status: 403 }); const body = extractRequestSchema.parse(await request.json()); const entries = body.mode === 'image' ? await extractFromImage(body.imageBase64 ?? '') : await extractFromText(body.text ?? ''); if (trialSession) await db.update(sandboxSessions).set({ extractionCount: sql`${sandboxSessions.extractionCount} + 1` }).where(eq(sandboxSessions.id, trialSession.id)); return NextResponse.json({ entries, trialRemaining: trialSession ? Math.max(0, 2 - trialSession.extractionCount) : undefined }) } catch (error) { const isInputError = error instanceof SyntaxError || error instanceof Error && error.name === 'ZodError'; return NextResponse.json({ error: { code: isInputError ? 'BAD_REQUEST' : 'SERVICE_UNAVAILABLE', message: isInputError ? 'Please provide a valid note or image.' : 'The AI reader is temporarily unavailable. You can type the entry manually.' } }, { status: isInputError ? 400 : 503 }) } }

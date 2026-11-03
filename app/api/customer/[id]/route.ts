@@ -1,0 +1,7 @@
+import { NextResponse } from 'next/server'
+import { and, desc, eq, isNull } from 'drizzle-orm'
+import { cookies } from 'next/headers'
+import { db } from '@/lib/db'
+import { customers, entries, sandboxSessions, shops } from '@/db/schema'
+import { auth } from '@/lib/auth'
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Please sign in to continue.' } }, { status: 401 }); const { id } = await context.params; const sessionId = (await cookies()).get('tabtalk_demo')?.value; if (!sessionId) return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Please sign in to continue.' } }, { status: 401 }); const owned = await db.select({ shopId: shops.id }).from(sandboxSessions).innerJoin(shops, eq(shops.organizationId, sandboxSessions.organizationId)).where(and(eq(sandboxSessions.id, sessionId), eq(shops.id, (await db.select({ shopId: customers.shopId }).from(customers).where(eq(customers.id, id)).limit(1))[0]?.shopId ?? ''))).limit(1); if (!owned[0]) return NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Customer not found.' } }, { status: 404 }); const customer = await db.select().from(customers).where(eq(customers.id, id)).limit(1); const ledger = await db.select().from(entries).where(and(eq(entries.customerId, id), isNull(entries.deletedAt))).orderBy(desc(entries.createdAt)); return NextResponse.json({ customer: customer[0], entries: ledger }) }

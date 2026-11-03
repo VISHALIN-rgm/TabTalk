@@ -1,0 +1,3 @@
+export const TESTED_LANGUAGES = ['English', 'Tamil', 'Spanish'] as const
+export const SPEECH_SUPPORTED = ['Arabic', 'Bengali', 'Dutch', 'English', 'French', 'German', 'Hebrew', 'Hindi', 'Indonesian', 'Italian', 'Japanese', 'Kannada', 'Korean', 'Malay', 'Mandarin Chinese', 'Marathi', 'Polish', 'Portuguese', 'Spanish', 'Tagalog', 'Tamil', 'Telugu', 'Thai', 'Turkish', 'Vietnamese'] as const
+export const DEMO_SHOPS = [{ id: 'murugan', name: 'Murugan Stores', currency: 'INR' }, { id: 'rosa', name: 'Tienda Doña Rosa', currency: 'MXN' }, { id: 'kamau', name: 'Kamau Mini Mart', currency: 'KES' }] as const
