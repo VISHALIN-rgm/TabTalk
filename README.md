@@ -10,8 +10,6 @@ TabTalk turns spoken or handwritten credit notes into a reviewable ledger and re
 ![Meta Model API](https://img.shields.io/badge/Meta%20Model%20API-Muse%20Spark%20%7C%20Voice%20Transcribe-0467DF)
 
 **Live demo:** https://tabtalk-development-alpha.vercel.app/
-**Demo video:** _add your 3-minute video link here (also set `NEXT_PUBLIC_DEMO_VIDEO_URL`)_
-**Repository:** _add your public GitHub link here (also set `NEXT_PUBLIC_REPO_URL`)_
 
 Built for the **Meta Global AI Developer Hackathon**, Track: **Build for Your World**.
 
